@@ -1,0 +1,230 @@
+
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+
+  <script type="text/javascript" src="/test/lib/jquery-2.1.4.js"></script>
+  <script type="text/javascript">
+    var jq=jQuery.noConflict();
+  </script>
+
+  <style type="text/css">
+
+    html,body{width: 100%;height: 100%;border:0;padding: 0;margin:0;position: relative;}
+    .main,svg.polygon{width: 1200px;height: 800px;}
+    .main{position: relative;background: url(bg.jpg) no-repeat;background-size:100% 100%;}
+    .dot{cursor: move;}
+    .svg{position: absolute;top:0;left: 0;overflow: visible;width: 1px;height: 1px;}
+    .label{position: absolute;width: 200px;height: 50px;border:solid 2px;background: white;top:0;left: 0;line-height: 50px;text-align: center;user-select:none;}
+
+  </style>
+
+</head>
+<body>
+
+  <div class="proto trapezoid" style="display: none;">
+    <svg class="svg">
+      <polygon points="" style="fill:rgba(255,100,0,.5);stroke:purple;stroke-width:1" />
+      <circle class="dot d0" cx="" cy="" r="4" fill="red" gv-draggable />
+      <circle class="dot d1" cx="" cy="" r="4" fill="orange" gv-draggable />
+      <circle class="dot d2" cx="" cy="" r="4" fill="green" gv-draggable />
+      <circle class="dot d3" cx="" cy="" r="4" fill="blue" gv-draggable />
+    </svg>
+  </div>
+
+  <div class="main">
+    <div class="label">双击添加新选区</div>
+  </div>
+
+
+  <script type="text/javascript">
+    var gv={};
+    gv.radian_to_degree=function(radian){
+      return radian*180/Math.PI;
+    }
+    gv.get_distance=function(a,b){
+      return Math.sqrt(
+          Math.pow((a.x-b.x),2)
+          +Math.pow((a.y-b.y),2)
+        )
+    }
+  </script>
+
+  <script type="text/javascript">
+
+    function Trapezoid(parent,option){
+      var option=option||{};
+      this.dom=jq('.proto.trapezoid').clone().removeClass('proto').show();
+      this.x=option.x||300;
+      this.y=option.y||300;
+      this.d0={x:0,y:0};
+      this.d1={x:100,y:0};
+      this.d2={x:120,y:80};
+      this.d3={x:-20,y:80};
+      this.radian=0;
+      this.degree=0;
+
+      this.init(parent);
+    }
+    Trapezoid.prototype.init=function(parent){
+      this.bind_dots();
+      this.draw_polygon();
+      this.draw_dots();
+      this.draw_svg();
+      jq(parent).append(this.dom);
+    }
+    Trapezoid.prototype.draw_svg=function(){
+      this.dom.find('.svg').css({
+        left:this.x+'px',
+        top:this.y+'px',
+      })
+    }
+    Trapezoid.prototype.draw_polygon=function(){
+      var points='';
+      for(var i=0;i<4;i++){
+        // points+=(this.x+this['d'+i].x)+','+(this.y+this['d'+i].y)+' ';
+        points+=this['d'+i].x+','+this['d'+i].y+' ';
+      }
+      this.dom.find('polygon').attr('points',points);
+    }
+    Trapezoid.prototype.draw_dots=function(){
+      for(var i=0;i<4;i++){
+        this.dom.find('.d'+i).attr('cx',this['d'+i].x);
+        this.dom.find('.d'+i).attr('cy',this['d'+i].y);
+      }
+    }
+    Trapezoid.prototype.bind_dots=function(){
+      var self=this;
+
+      this.dom.find('.dot').each(function(i,elem){
+        elem=jq(elem);
+        var startX = 0, startY = 0, x = 0, y = 0;
+        elem.on('mousedown', function(event) {
+          // Prevent default dragging of selected content
+          event.preventDefault();
+          startX = event.pageX;
+          startY = event.pageY;
+          jq(document).on('mousemove', mousemove);
+          jq(document).on('mouseup', mouseup);
+        });
+
+        function mousemove(event) {
+          x = event.pageX - startX;
+          y = event.pageY - startY;
+          startX = event.pageX;
+          startY = event.pageY;
+          if(i==0){
+            var svg=self.dom.find('.svg');
+            self.x=parseInt(svg.css('left'))+x;
+            self.y=parseInt(svg.css('top'))+y;
+
+            svg.css({
+              left:self.x+'px',
+              top:self.y+'px',
+            })
+          }
+          else{
+            var aaa=parseInt(elem.attr('cx'))+x;
+            var bbb=parseInt(elem.attr('cy'))+y;
+            self['d'+i].x=aaa;
+            self['d'+i].y=bbb;
+
+            if(i==1){
+
+              var adjacent=self.d1.x-self.d0.x;
+              var opposite=-(self.d1.y-self.d0.y);
+
+              if(adjacent==0&&opposite==0){
+                return;
+              }
+
+              var radian=Math.atan(opposite/adjacent);
+              if(adjacent<0){
+                radian=radian+Math.PI;
+              }
+
+              var hypotenuse2=gv.get_distance(self.d3,self.d2);
+              var opposite2=Math.sin(radian)*hypotenuse2;
+              var adjacent2=Math.cos(radian)*hypotenuse2;
+              self.d2.x=self.d3.x+adjacent2;
+              self.d2.y=self.d3.y+(-opposite2);
+
+
+
+              self.radian=radian;
+              if(adjacent>=0&&opposite<0){
+                self.radian=self.radian+2*Math.PI;
+              }
+              self.degree=gv.radian_to_degree(self.radian);
+              console.log(self.degree);
+            }
+            else if(i==2||i==3){
+
+              var adjacent=self.d2.x-self.d3.x;
+              var opposite=-(self.d2.y-self.d3.y);
+
+              if(adjacent==0&&opposite==0){
+                return;
+              }
+
+              var radian=Math.atan(opposite/adjacent);
+              if(adjacent<0){
+                radian=radian+Math.PI;
+              }
+
+              var hypotenuse2=gv.get_distance(self.d0,self.d1);
+              var opposite2=Math.sin(radian)*hypotenuse2;
+              var adjacent2=Math.cos(radian)*hypotenuse2;
+              self.d1.x=self.d0.x+adjacent2;
+              self.d1.y=self.d0.y+(-opposite2);
+
+
+
+              self.radian=radian;
+              if(adjacent>=0&&opposite<0){
+                self.radian=self.radian+2*Math.PI;
+              }
+              self.degree=gv.radian_to_degree(self.radian);
+              console.log(self.degree);
+            }
+
+            elem.attr('cx',self['d'+i].x);
+            elem.attr('cy',self['d'+i].y);
+            self.draw_polygon();
+            self.draw_dots();
+          }
+        }
+
+        function mouseup() {
+          jq(document).off('mousemove', mousemove);
+          jq(document).off('mouseup', mouseup);
+        }
+      })
+    }
+
+
+  </script>
+
+  <script type="text/javascript">
+    var trapezoid=new Trapezoid('.main');
+    var trapezoid2=new Trapezoid('.main',{x:100,y:100});
+
+    jq(document).dblclick(function(e){
+      new Trapezoid('.main',{
+        x:e.pageX,
+        y:e.pageY,
+      })
+    })
+
+    jq(document).mousemove(function(){
+      // console.log(trapezoid.radian.toFixed(3)+' '+trapezoid.degree.toFixed(0));
+    })
+  </script>
+
+</body>
+</html>
