@@ -18,8 +18,9 @@
     html,body{width: 100%;height: 100%;border:0;padding: 0;margin:0;position: relative;}
     .main,svg.polygon{width: 1200px;height: 800px;}
     .main{position: relative;background: url(bg.jpg) no-repeat;background-size:100% 100%;}
-    .dot{cursor: move;}
-    .svg{position: absolute;top:0;left: 0;overflow: visible;width: 1px;height: 1px;}
+    .dot{position:absolute;left:0;top:0;cursor: move;width:0;height: 0;border:solid;border-radius:50%;border-color:;}
+    .trapezoid{position: absolute;top:0;left: 0;overflow: visible;width: 0;height: 0;}
+    svg{overflow: visible;position: absolute;left: 0;top:0;width: 1px;height: 1px;pointer-events: none;}
     .label{position: absolute;width: 200px;height: 50px;border:solid 2px;background: white;top:0;left: 0;line-height: 50px;text-align: center;user-select:none;}
 
   </style>
@@ -28,13 +29,13 @@
 <body>
 
   <div class="proto trapezoid" style="display: none;">
-    <svg class="svg">
-      <polygon points="" style="fill:rgba(255,100,0,.5);stroke:purple;stroke-width:1" />
-      <circle class="dot d0" cx="" cy="" r="4" fill="red" gv-draggable />
-      <circle class="dot d1" cx="" cy="" r="4" fill="orange" gv-draggable />
-      <circle class="dot d2" cx="" cy="" r="4" fill="green" gv-draggable />
-      <circle class="dot d3" cx="" cy="" r="4" fill="blue" gv-draggable />
-    </svg>
+      <svg class="svg">
+        <polygon points="" style="fill:rgba(255,100,0,.5);stroke:purple;stroke-width:1" />
+      </svg>
+      <div class="dot d0" style="border-color:red" ></div>
+      <div class="dot d1" style="border-color:orange" ></div>
+      <div class="dot d2" style="border-color:green" ></div>
+      <div class="dot d3" style="border-color:blue" ></div>
   </div>
 
   <div class="main">
@@ -57,82 +58,99 @@
 
   <script type="text/javascript">
 
-    function Trapezoid(parent,option){
-      var option=option||{};
-      this.dom=jq('.proto.trapezoid').clone().removeClass('proto').show();
-      this.x=option.x||300;
-      this.y=option.y||300;
-      this.d0={x:0,y:0};
-      this.d1={x:100,y:0};
-      this.d2={x:120,y:80};
-      this.d3={x:-20,y:80};
-      this.radian=0;
-      this.degree=0;
+    var dot_radius=4;
 
-      this.init(parent);
+    function Trapezoid(parent,option){
+      var self=this;
+      var option=option||{};
+      self.dom=jq('.proto.trapezoid').clone().removeClass('proto').show();
+      self.x=option.x||300;
+      self.y=option.y||300;
+      self.d0={x:0,y:0};
+      self.d1={x:100,y:0};
+      self.d2={x:120,y:80};
+      self.d3={x:-20,y:80};
+      self.radian=0;
+      self.degree=0;
+
+      self.init(parent);
     }
     Trapezoid.prototype.init=function(parent){
-      this.bind_dots();
-      this.draw_polygon();
-      this.draw_dots();
-      this.draw_svg();
-      jq(parent).append(this.dom);
+      var self=this;
+      self.bind_dots();
+      self.draw_polygon();
+      self.draw_dots();
+      self.draw_svg();
+      jq(parent).append(self.dom);
     }
     Trapezoid.prototype.draw_svg=function(){
-      this.dom.find('.svg').css({
-        left:this.x+'px',
-        top:this.y+'px',
+      var self=this;
+      self.dom.css({
+        left:self.x+'px',
+        top:self.y+'px',
       })
     }
     Trapezoid.prototype.draw_polygon=function(){
+      var self=this;
       var points='';
       for(var i=0;i<4;i++){
-        // points+=(this.x+this['d'+i].x)+','+(this.y+this['d'+i].y)+' ';
-        points+=this['d'+i].x+','+this['d'+i].y+' ';
+        // points+=(self.x+self['d'+i].x)+','+(self.y+self['d'+i].y)+' ';
+        points+=self['d'+i].x+','+self['d'+i].y+' ';
       }
-      this.dom.find('polygon').attr('points',points);
+      self.dom.find('polygon').attr('points',points);
     }
     Trapezoid.prototype.draw_dots=function(){
+      var self=this;
+      self.dom.find('.dot').css('border-width',dot_radius+'px');
       for(var i=0;i<4;i++){
-        this.dom.find('.d'+i).attr('cx',this['d'+i].x);
-        this.dom.find('.d'+i).attr('cy',this['d'+i].y);
+        self.set_dot_position(self.dom.find('.d'+i),self['d'+i]);
       }
+    }
+    Trapezoid.prototype.get_dot_position=function(elem){
+      var self=this;
+      var x=parseInt(elem.css('left'))+dot_radius;
+      var y=parseInt(elem.css('top'))+dot_radius;
+      return {x:x,y:y};
+    }
+    Trapezoid.prototype.set_dot_position=function(elem,position){
+      var self=this;
+      elem.css('left',position.x-dot_radius+'px');
+      elem.css('top',position.y-dot_radius+'px');
     }
     Trapezoid.prototype.bind_dots=function(){
       var self=this;
 
-      this.dom.find('.dot').each(function(i,elem){
+      self.dom.find('.dot').each(function(i,elem){
+
         elem=jq(elem);
         var startX = 0, startY = 0, x = 0, y = 0;
-        elem.on('mousedown', function(event) {
-          // Prevent default dragging of selected content
-          event.preventDefault();
-          startX = event.pageX;
-          startY = event.pageY;
+
+        elem.on('mousedown', function(e) {
+          e.preventDefault();
+          startX = e.pageX;
+          startY = e.pageY;
           jq(document).on('mousemove', mousemove);
           jq(document).on('mouseup', mouseup);
         });
 
-        function mousemove(event) {
-          x = event.pageX - startX;
-          y = event.pageY - startY;
-          startX = event.pageX;
-          startY = event.pageY;
+        function mousemove(e) {
+          x = e.pageX - startX;
+          y = e.pageY - startY;
+          startX = e.pageX;
+          startY = e.pageY;
           if(i==0){
-            var svg=self.dom.find('.svg');
-            self.x=parseInt(svg.css('left'))+x;
-            self.y=parseInt(svg.css('top'))+y;
+            self.x=parseInt(self.dom.css('left'))+x;
+            self.y=parseInt(self.dom.css('top'))+y;
 
-            svg.css({
+            self.dom.css({
               left:self.x+'px',
               top:self.y+'px',
             })
           }
           else{
-            var aaa=parseInt(elem.attr('cx'))+x;
-            var bbb=parseInt(elem.attr('cy'))+y;
-            self['d'+i].x=aaa;
-            self['d'+i].y=bbb;
+            var position=self.get_dot_position(elem);
+            self['d'+i].x=position.x+x;
+            self['d'+i].y=position.y+y;
 
             if(i==1){
 
@@ -161,7 +179,7 @@
                 self.radian=self.radian+2*Math.PI;
               }
               self.degree=gv.radian_to_degree(self.radian);
-              console.log(self.degree);
+              // console.log(self.degree);
             }
             else if(i==2||i==3){
 
@@ -190,11 +208,10 @@
                 self.radian=self.radian+2*Math.PI;
               }
               self.degree=gv.radian_to_degree(self.radian);
-              console.log(self.degree);
+              // console.log(self.degree);
             }
 
-            elem.attr('cx',self['d'+i].x);
-            elem.attr('cy',self['d'+i].y);
+            self.set_dot_position(elem,self['d'+i]);
             self.draw_polygon();
             self.draw_dots();
           }
